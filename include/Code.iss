@@ -9,14 +9,14 @@ CONST
   PRODUCT_REGISTRY_KEY_64 = 'SOFTWARE\Wow6432Node\Microsoft\Windows\CurrentVersion\Uninstall\{#MyAppID}_is1';
   WM_SYSCOMMAND = $0112;
   ID_BUTTON_ON_CLICK_EVENT = 1;
-  WIZARDFORM_WIDTH_NORMAL = 600;
-  WIZARDFORM_HEIGHT_NORMAL = 400;
-  WIZARDFORM_HEIGHT_MORE = 503;
+  WIZARDFORM_WIDTH_NORMAL = 458;
+  WIZARDFORM_HEIGHT_NORMAL = 506;
+  WIZARDFORM_HEIGHT_MORE = WIZARDFORM_HEIGHT_NORMAL;
 
 VAR
-  label_wizardform_main, label_messagebox_main, label_wizardform_more_product_already_installed, label_messagebox_information, label_messagebox_title, label_wizardform_title, label_install_progress : TLabel;
+  label_wizardform_main, label_messagebox_main, label_wizardform_more_product_already_installed, label_messagebox_information, label_messagebox_title, label_install_progress : TLabel;
   image_wizardform_background, image_messagebox_background, image_progressbar_background, image_progressbar_foreground, PBOldProc : LONGINT;
-  button_license, button_minimize, button_close, button_browse, button_setup_or_next, button_customize_setup, button_uncustomize_setup, checkbox_license, checkbox_setdefault, button_messagebox_close, button_messagebox_ok, button_messagebox_cancel : HWND;
+  button_license, button_minimize, button_close, button_browse, button_install, button_start, button_customize_setup, button_uncustomize_setup, checkbox_license, button_messagebox_close, button_messagebox_ok, button_messagebox_cancel : HWND;
   is_wizardform_show_normal, is_installer_initialized, is_platform_windows_7, is_wizardform_released, can_exit_setup, need_to_change_associations : BOOLEAN;
   edit_target_path : TEdit;
   version_installed_before : STRING;
@@ -183,9 +183,6 @@ BEGIN
     image_wizardform_background := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\background_welcome_more.png'), 0, 0, WIZARDFORM_WIDTH_NORMAL, WIZARDFORM_HEIGHT_MORE, FALSE, TRUE);
     edit_target_path.Show();
     BtnSetVisibility(button_browse, TRUE);
-#ifdef RegisteAssociations
-    BtnSetVisibility(checkbox_setdefault, TRUE);
-#endif
     BtnSetVisibility(button_customize_setup, FALSE);
     BtnSetVisibility(button_uncustomize_setup, TRUE);
 #ifndef PortableBuild
@@ -202,9 +199,6 @@ BEGIN
     edit_target_path.Hide();
     label_wizardform_more_product_already_installed.Hide();
     BtnSetVisibility(button_browse, FALSE);
-#ifdef RegisteAssociations
-    BtnSetVisibility(checkbox_setdefault, FALSE);
-#endif
     WizardForm.Height := WIZARDFORM_HEIGHT_NORMAL;
     image_wizardform_background := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\background_welcome.png'), 0, 0, WIZARDFORM_WIDTH_NORMAL, WIZARDFORM_HEIGHT_NORMAL, FALSE, TRUE);
     BtnSetVisibility(button_customize_setup, TRUE);
@@ -232,43 +226,21 @@ PROCEDURE checkbox_license_on_click(hBtn : HWND);
 BEGIN
     IF BtnGetChecked(checkbox_license) THEN
     BEGIN
-      BtnSetEnabled(button_setup_or_next, TRUE);
+      BtnSetEnabled(button_install, TRUE);
     END ELSE
     BEGIN
-      BtnSetEnabled(button_setup_or_next, FALSE);
+      BtnSetEnabled(button_install, FALSE);
     END;
-END;
-
-//设为默认软件的复选框被点击时执行的脚本
-PROCEDURE checkbox_setdefault_on_click(hBtn : HWND);
-BEGIN
-  IF BtnGetChecked(checkbox_setdefault) THEN
-  BEGIN
-    need_to_change_associations := TRUE;  
-  END ELSE
-  BEGIN
-    need_to_change_associations := FALSE;
-  END;
-END;
-
-//返回设为默认软件复选框的状态，已勾选则返回TRUE，否则返回FALSE
-FUNCTION is_setdefault_checkbox_checked() : BOOLEAN;
-BEGIN
-  Result := need_to_change_associations;
 END;
 
 //若设为默认软件的复选框被勾选，则会在文件复制结束时执行此段脚本
 PROCEDURE check_if_need_change_associations();
 BEGIN
-  IF is_setdefault_checkbox_checked() THEN
-  BEGIN
-    //TODO
-    MsgBox('此处执行注册文件后缀名的操作。', mbInformation, MB_OK);
-  END;
+  MsgBox('此处执行注册文件后缀名的操作。', mbInformation, MB_OK);
 END;
 
 //主界面安装按钮按下时执行的脚本
-PROCEDURE button_setup_or_next_on_click(hBtn : HWND);
+PROCEDURE button_install_on_click(hBtn : HWND);
 BEGIN
   WizardForm.NextButton.OnClick(WizardForm);
 END;
@@ -286,9 +258,6 @@ BEGIN
     i2 := WizardForm.ProgressGauge.Max - WizardForm.ProgressGauge.Min;
     pr := (i1 * 100) / i2;
     label_install_progress.Caption := Format('%d', [Round(pr)]) + '%';
-    w := Round((560 * pr) / 100);
-    ImgSetPosition(image_progressbar_foreground, 20, 374, w, 6);
-    ImgSetVisiblePart(image_progressbar_foreground, 0, 0, w, 6);
     ImgApplyChanges(WizardForm.Handle);
   END;
 END;
@@ -313,6 +282,15 @@ PROCEDURE button_messagebox_cancel_on_click(hBtn : HWND);
 BEGIN
   can_exit_setup := FALSE;
   messagebox_close.Close();
+END;
+
+//立即体验按钮按下后执行的脚本
+PROCEDURE button_start_on_click(hBtn : HWND);
+VAR
+  ErrorCode : INTEGER;
+BEGIN
+  ShellExec('', ExpandConstant('{app}\{#MyAppExeName}'), '', '', SW_SHOW, ewNoWait, ErrorCode);
+  WizardForm.NextButton.OnClick(WizardForm);
 END;
 
 //主界面被点住就随鼠标移动的脚本
@@ -351,8 +329,8 @@ BEGIN
   WITH messagebox_close DO
   BEGIN
     BorderStyle := bsNone;
-    Width := 380;
-    Height := 190;
+    Width := 346;
+    Height := 153;
     Color := clWhite;
     Caption := '';
   END;
@@ -361,13 +339,13 @@ BEGIN
   BEGIN
     Parent := messagebox_close;
     AutoSize := FALSE;
-    Left := 30;
-    Top := 5;
-    Width := 400;
+    Left := 9;
+    Top := 9;
+    Width := 200;
     Height := 20;
     Font.Name := 'Microsoft YaHei';
-    Font.Size := 10;
-    Font.Color := clWhite;
+    Font.Size := 9;
+    Font.Color := clGray;
     Caption := '{#MyAppName} 安装';
     Transparent := TRUE;
     OnMouseDown := @messagebox_on_mouse_down;
@@ -377,8 +355,8 @@ BEGIN
   BEGIN
     Parent := messagebox_close;
     AutoSize := FALSE;
-    Left := 70;
-    Top := 64;
+    Left := 75;
+    Top := 60;
     Width := 400;
     Height := 20;
     Font.Name := 'Microsoft YaHei';
@@ -401,12 +379,12 @@ BEGIN
     Transparent := TRUE;
     OnMouseDown := @messagebox_on_mouse_down;
   END;
-  image_messagebox_background := ImgLoad(messagebox_close.Handle, ExpandConstant('{tmp}\background_messagebox.png'), 0, 0, 380, 190, FALSE, TRUE);
-  button_messagebox_close := BtnCreate(messagebox_close.Handle, 350, 0, 30, 30, ExpandConstant('{tmp}\button_close.png'), 0, FALSE);
+  image_messagebox_background := ImgLoad(messagebox_close.Handle, ExpandConstant('{tmp}\background_messagebox.png'), 0, 0, 346, 153, FALSE, TRUE);
+  button_messagebox_close := BtnCreate(messagebox_close.Handle, 326, 9, 10, 10, ExpandConstant('{tmp}\button_close.png'), 0, FALSE);
   BtnSetEvent(button_messagebox_close, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_messagebox_cancel_on_click, 1));
-  button_messagebox_ok := BtnCreate(messagebox_close.Handle, 206, 150, 76, 28, ExpandConstant('{tmp}\button_ok.png'), 0, FALSE);
+  button_messagebox_ok := BtnCreate(messagebox_close.Handle, 172, 118, 73, 24, ExpandConstant('{tmp}\button_ok.png'), 0, FALSE);
   BtnSetEvent(button_messagebox_ok, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_messagebox_ok_on_click, 1));
-  button_messagebox_cancel := BtnCreate(messagebox_close.Handle, 293, 150, 76, 28, ExpandConstant('{tmp}\button_cancel.png'), 0, FALSE);
+  button_messagebox_cancel := BtnCreate(messagebox_close.Handle, 253, 118, 73, 24, ExpandConstant('{tmp}\button_cancel.png'), 0, FALSE);
   BtnSetEvent(button_messagebox_cancel, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_messagebox_cancel_on_click, 1));
   ImgApplyChanges(messagebox_close.Handle);
 END;
@@ -432,17 +410,12 @@ BEGIN
   ExtractTemporaryFile('button_customize_setup.png');
   ExtractTemporaryFile('button_uncustomize_setup.png');
   ExtractTemporaryFile('button_finish.png');
-  ExtractTemporaryFile('button_setup_or_next.png');
+  ExtractTemporaryFile('button_install.png');
   ExtractTemporaryFile('background_welcome.png');
   ExtractTemporaryFile('background_welcome_more.png');
   ExtractTemporaryFile('button_browse.png');
-  ExtractTemporaryFile('progressbar_background.png');
-  ExtractTemporaryFile('progressbar_foreground.png');
   ExtractTemporaryFile('button_license.png');
-  ExtractTemporaryFile('checkbox_license.png');
-#ifdef RegisteAssociations
-  ExtractTemporaryFile('checkbox_setdefault.png');
-#endif
+  ExtractTemporaryFile('checkbox.png');
   ExtractTemporaryFile('background_installing.png');
   ExtractTemporaryFile('background_finish.png');
   ExtractTemporaryFile('button_close.png');
@@ -518,29 +491,13 @@ BEGIN
     CancelButton.Height := 0;
     BackButton.Visible := FALSE;
   END;
-  label_wizardform_title := TLabel.Create(WizardForm);
-  WITH label_wizardform_title DO
-  BEGIN
-    Parent := WizardForm;
-    AutoSize := FALSE;
-    Left := 10;
-    Top := 5;
-    Width := 200;
-    Height := 20;
-    Font.Name := 'Microsoft YaHei';
-    Font.Size := 9;
-    Font.Color := clWhite;
-    Caption := '{#MyAppName} V{#MyAppVersion} 安装';
-    Transparent := TRUE;
-    OnMouseDown := @wizardform_on_mouse_down;
-  END;
   label_wizardform_more_product_already_installed := TLabel.Create(WizardForm);
   WITH label_wizardform_more_product_already_installed DO
   BEGIN
     Parent := WizardForm;
     AutoSize := FALSE;
-    Left := 85;
-    Top := 449;
+    Left := 20;
+    Top := 400;
     Width := 200;
     Height := 20;
     Font.Name := 'Microsoft YaHei';
@@ -571,25 +528,26 @@ BEGIN
     Text := WizardForm.DirEdit.Text;
     Font.Name := 'Microsoft YaHei';
     Font.Size := 9;
+    Font.Color := clBlack;
     BorderStyle := bsNone;
-    SetBounds(91,423,402,20);
-    OnChange := @edit_target_path_on_change;
+    SetBounds(22,430,301,20);
     Color := clWhite;
+    OnChange := @edit_target_path_on_change;
     TabStop := FALSE;
   END;
   edit_target_path.Hide();
-  button_close := BtnCreate(WizardForm.Handle, 570, 0, 30, 30, ExpandConstant('{tmp}\button_close.png'), 0, FALSE);
+  button_close := BtnCreate(WizardForm.Handle, 430, 18, 10, 10, ExpandConstant('{tmp}\button_close.png'), 0, FALSE);
   BtnSetEvent(button_close, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_close_on_click, 1));
-  button_minimize := BtnCreate(WizardForm.Handle, 540, 0, 30, 30, ExpandConstant('{tmp}\button_minimize.png'), 0, FALSE);
+  button_minimize := BtnCreate(WizardForm.Handle, 408, 22, 10, 3, ExpandConstant('{tmp}\button_minimize.png'), 0, FALSE);
   BtnSetEvent(button_minimize, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_minimize_on_click, 1));
-  button_setup_or_next := BtnCreate(WizardForm.Handle, 211, 305, 178, 43, ExpandConstant('{tmp}\button_setup_or_next.png'), 0, FALSE);
-  BtnSetEvent(button_setup_or_next, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_setup_or_next_on_click, 1));
-  button_browse := BtnCreate(WizardForm.Handle, 506, 420, 75, 24, ExpandConstant('{tmp}\button_browse.png'), 0, FALSE);
+  button_install := BtnCreate(WizardForm.Handle, 128, 311, 206, 59, ExpandConstant('{tmp}\button_install.png'), 0, FALSE);
+  BtnSetEvent(button_install, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_install_on_click, 1));
+  button_browse := BtnCreate(WizardForm.Handle, 349, 423, 89, 29, ExpandConstant('{tmp}\button_browse.png'), 0, FALSE);
   BtnSetEvent(button_browse, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_browse_on_click, 1));
   BtnSetVisibility(button_browse, FALSE);
-  button_customize_setup := BtnCreate(WizardForm.Handle, 511, 374, 78, 14, ExpandConstant('{tmp}\button_customize_setup.png'), 0, FALSE);
+  button_customize_setup := BtnCreate(WizardForm.Handle, 345, 475, 93, 16, ExpandConstant('{tmp}\button_customize_setup.png'), 0, FALSE);
   BtnSetEvent(button_customize_setup, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_customize_setup_on_click, 1));
-  button_uncustomize_setup := BtnCreate(WizardForm.Handle, 511, 374, 78, 14, ExpandConstant('{tmp}\button_uncustomize_setup.png'), 0, FALSE);
+  button_uncustomize_setup := BtnCreate(WizardForm.Handle, 345, 475, 93, 16, ExpandConstant('{tmp}\button_uncustomize_setup.png'), 0, FALSE);
   BtnSetEvent(button_uncustomize_setup, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_customize_setup_on_click, 1));
   BtnSetVisibility(button_uncustomize_setup, FALSE);
   PBOldProc := SetWindowLong(WizardForm.ProgressGauge.Handle, -4, PBCallBack(@PBProc, 4));
@@ -616,17 +574,11 @@ BEGIN
   IF (CurPageID = wpWelcome) THEN
   BEGIN
     image_wizardform_background := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\background_welcome.png'), 0, 0, WIZARDFORM_WIDTH_NORMAL, WIZARDFORM_HEIGHT_NORMAL, FALSE, TRUE);
-    button_license := BtnCreate(WizardForm.Handle, 110, 376, 96, 12, ExpandConstant('{tmp}\button_license.png'), 0, FALSE);
+    button_license := BtnCreate(WizardForm.Handle, 118, 477, 96, 12, ExpandConstant('{tmp}\button_license.png'), 0, FALSE);
     BtnSetEvent(button_license, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_license_on_click, 1));
-    checkbox_license := BtnCreate(WizardForm.Handle, 11, 374, 93, 17, ExpandConstant('{tmp}\checkbox_license.png'), 0, TRUE);
+    checkbox_license := BtnCreate(WizardForm.Handle, 20, 476, 13, 13, ExpandConstant('{tmp}\checkbox.png'), 0, TRUE);
     BtnSetEvent(checkbox_license, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@checkbox_license_on_click, 1));
     BtnSetChecked(checkbox_license, TRUE);
-#ifdef RegisteAssociations
-    checkbox_setdefault := BtnCreate(WizardForm.Handle, 85, 470, 92, 17, ExpandConstant('{tmp}\checkbox_setdefault.png'), 0, TRUE);
-    BtnSetEvent(checkbox_setdefault, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@checkbox_setdefault_on_click, 1));
-    BtnSetChecked(checkbox_setdefault, TRUE);
-    BtnSetVisibility(checkbox_setdefault, FALSE);
-#endif
     WizardForm.Height := WIZARDFORM_HEIGHT_NORMAL;
     ImgApplyChanges(WizardForm.Handle);
   END;
@@ -639,11 +591,7 @@ BEGIN
     is_wizardform_show_normal := TRUE;
     BtnSetVisibility(button_customize_setup, FALSE);
     BtnSetVisibility(button_uncustomize_setup, FALSE);
-    BtnSetVisibility(button_close, FALSE);
-    BtnSetPosition(button_minimize, 570, 0, 30, 30);
-#ifdef RegisteAssociations
-    BtnSetVisibility(checkbox_setdefault, FALSE);
-#endif
+    BtnSetEnabled(button_close, FALSE);
     BtnSetVisibility(button_license, FALSE);
     BtnSetVisibility(checkbox_license, FALSE);
     label_install_progress := TLabel.Create(WizardForm);
@@ -651,35 +599,30 @@ BEGIN
     BEGIN
       Parent := WizardForm;
       AutoSize := FALSE;
-      Left := 547;
-      Top := 349;
-      Width := 30;
-      Height := 30;
+      Left := 55;
+      Top := 175;
+      Width := 329;
+      Height := 174;
       Font.Name := 'Microsoft YaHei';
-      Font.Size := 10;
-      Font.Color := clBlack;
+      Font.Size := 90;
+      Font.Color := clWhite;
       Caption := '';
       Transparent := TRUE;
       Alignment := taRightJustify;
       OnMouseDown := @wizardform_on_mouse_down;
     END;
     image_wizardform_background := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\background_installing.png'), 0, 0, WIZARDFORM_WIDTH_NORMAL, WIZARDFORM_HEIGHT_NORMAL, FALSE, TRUE);
-    image_progressbar_background := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\progressbar_background.png'), 20, 374, 560, 6, FALSE, TRUE);
-    image_progressbar_foreground := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\progressbar_foreground.png'), 20, 374, 0, 0, TRUE, TRUE);
-    BtnSetVisibility(button_setup_or_next, FALSE);
+    BtnSetVisibility(button_install, FALSE);
     ImgApplyChanges(WizardForm.Handle);
   END;
   IF (CurPageID = wpFinished) THEN
   BEGIN
     label_install_progress.Caption := '';
     label_install_progress.Visible := FALSE;
-    ImgSetVisibility(image_progressbar_background, FALSE);
-    ImgSetVisibility(image_progressbar_foreground, FALSE);
-    BtnSetPosition(button_minimize, 540, 0, 30, 30);
-    BtnSetVisibility(button_close, TRUE);
-    button_setup_or_next := BtnCreate(WizardForm.Handle, 214, 305, 180, 44, ExpandConstant('{tmp}\button_finish.png'), 0, FALSE);
-    BtnSetEvent(button_setup_or_next, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_setup_or_next_on_click, 1));
-    BtnSetEvent(button_close, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_setup_or_next_on_click, 1));
+    BtnSetEnabled(button_close, TRUE);
+    button_start := BtnCreate(WizardForm.Handle, 128, 311, 206, 59, ExpandConstant('{tmp}\button_finish.png'), 0, FALSE);
+    BtnSetEvent(button_start, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_start_on_click, 1));
+    BtnSetEvent(button_close, ID_BUTTON_ON_CLICK_EVENT, WrapBtnCallback(@button_install_on_click, 1));
     image_wizardform_background := ImgLoad(WizardForm.Handle, ExpandConstant('{tmp}\background_finish.png'), 0, 0, WIZARDFORM_WIDTH_NORMAL, WIZARDFORM_HEIGHT_NORMAL, FALSE, TRUE);
     ImgApplyChanges(WizardForm.Handle);
   END;

@@ -1,5 +1,6 @@
 # InternetFashionedInstaller
-一个用InnoSetup仿好压安装程序的脚本模板，改一改背景图片就可以一键打包属于自己的美观的互联网风格的安装程序
+
+这是一个用**Inno Setup**仿“迅雷极速版”安装程序的脚本模板，改一改背景图片就可以一键打包属于自己的美观的互联网风格的安装程序。
 
 **注：使用此脚本模板之前请您一定要了解一下 Inno Setup 脚本的常量、区段的作用及用法！大概了解一下就行，看看编译器自带的帮助文档，也就几分钟的事！**
 
@@ -23,9 +24,6 @@
 
 ## 截图
 ![01](/Snapshot/01.PNG)
-![02](/Snapshot/02.PNG)
-![03](/Snapshot/03.PNG)
-![04](/Snapshot/04.PNG)
 
 ## 支持平台
 * 此脚本打包的安装程序已在**Microsoft Windows XP SP3（仅32位）、Windows 7 SP1、Windows 8.1 with Update 1 以及 Windows 10 1703 32位&64位操作系统**上测试通过，目标功能全部完美实现，无任何BUG

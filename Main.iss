@@ -1,6 +1,6 @@
 ﻿;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;此脚本主要模仿并实现“好压”安装程序的界面                                                           ;
-;请使用 Unicode 版 Inno Setup 5.5.9（或更新） 编译器编译                                            ;
+;此脚本主要模仿并实现“迅雷极速版”安装程序的界面                                                           ;
+;请使用 Unicode 版 Inno Setup 5.5.0（或更新） 编译器编译                                            ;
 ;经测试，此脚本可以在官方原版编译器、SkyGZ增强版编译器和Restools增强版编译器上完美编译通过并正常运行;
 ;令人遗憾的是原始脚本作者已不可考                                                                   ;
 ;代码主要思路来源于：http://blog.csdn.net/oceanlucy/article/details/50033773                        ;
@@ -134,7 +134,7 @@ UninstallFilesDir={app}\Uninstaller
 Name: "zh_CN"; MessagesFile: ".\lang\zh-CN.isl"
 
 [Files]
-;包含项目文件
+;包含项目文件，正式打包项目时，请取消下一行的注释
 ;Source: ".\app\*"; DestDir: "{app}"; Flags: ignoreversion recursesubdirs createallsubdirs
 ;包含所有临时资源文件
 Source: ".\tmp\*"; DestDir: "{tmp}"; Flags: dontcopy solidbreak nocompression; Attribs: hidden system
